@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>红岩子滑坡｜三维地理环境</title>
+
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.147/Build/Cesium/Cesium.js"></script>
+  <link
+    rel="stylesheet"
+    href="https://cesium.com/downloads/cesiumjs/releases/1.147/Build/Cesium/Widgets/widgets.css"
+  >
+
+  <style>
+    html,
+    body,
+    #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      width: min(290px, calc(100vw - 64px));
+      padding: 16px;
+      background: rgba(16, 29, 43, 0.92);
+      color: white;
+      border-radius: 10px;
+      line-height: 1.7;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 8px;
+    }
+
+    p {
+      font-size: 13px;
+      margin: 8px 0;
+    }
+
+    button {
+      margin: 6px 6px 0 0;
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 5px;
+      cursor: pointer;
+      background: #d9edf7;
+      color: #142b40;
+    }
+
+    button:hover {
+      background: #b8dcec;
+    }
+
+    #status {
+      color: #ffd166;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <section id="panel">
+    <h1>红岩子滑坡</h1>
+
+    <p>重庆巫山 · 大宁河东岸</p>
+
+    <p>位置参考：109.896944°E，31.078333°N</p>
+
+    <p>
+      标记为论文定位点，非滑坡边界。
+      在线影像和地形不代表 2015 年灾前或灾后的特定状态。
+    </p>
+
+    <button id="oblique" type="button">倾斜观察</button>
+    <button id="overhead" type="button">俯视观察</button>
+
+    <p>
+      左键拖动平移｜滚轮缩放｜中键拖动调整视角
+    </p>
+
+    <p id="status" role="status"></p>
+  </section>
+
+  <script>
+    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjNPaGt4aF9rRmxqemZXZXYiLCJqdGkiOiJlMmZhZWJiMi05N2MyLTRlOGMtOTY3Ny02YzA0ODZhZmUyODEiLCJpZCI6NTQxNTA5LCJpc3MiOiJodHRwczovL2FwaS5jZXNpdW0uY29tIiwiYXVkIjoidW5kZWZpbmVkX2RlZmF1bHQiLCJpYXQiOjE3OTM2ODY1Mjl9.Ez40jp8-TWgVwXdU8XBEXvKlhR4K6ISywzYnQBfgXRY";
+
+    const status = document.getElementById("status");
+
+    // 加载 Cesium 在线地形。
+    const terrain = Cesium.Terrain.fromWorldTerrain();
+
+    terrain.errorEvent.addEventListener(() => {
+      status.textContent =
+        "地形加载失败，请检查 token、资源权限和网络。";
+    });
+
+    // 创建三维地图。
+    const viewer = new Cesium.Viewer("map", {
+      terrain: terrain,
+      animation: false,
+      timeline: false,
+      geocoder: false,
+      homeButton: false,
+      sceneModePicker: false,
+      baseLayerPicker: true,
+      navigationHelpButton: true,
+      infoBox: false
+    });
+
+    // 关闭太阳光照，便于观察地表。
+    viewer.scene.globe.enableLighting = false;
+
+    // 添加论文提供的滑坡位置参考点。
+    viewer.entities.add({
+      name: "红岩子滑坡（论文定位点）",
+
+      position: Cesium.Cartesian3.fromDegrees(
+        109.896944,
+        31.078333
+      ),
+
+      point: {
+        pixelSize: 13,
+        color: Cesium.Color.ORANGE,
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+      },
+
+      label: {
+        text: "红岩子滑坡（位置参考）",
+        font: "15px sans-serif",
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 3,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        pixelOffset: new Cesium.Cartesian2(0, -28),
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+      }
+    });
+
+    // 200 m 仅为相机观察目标的示意高程，不是测量结果。
+    const target = new Cesium.BoundingSphere(
+      Cesium.Cartesian3.fromDegrees(
+        109.896944,
+        31.078333,
+        200
+      ),
+      1200
+    );
+
+    // 切换相机观察角度。
+    function showView(pitch) {
+      viewer.camera.flyToBoundingSphere(target, {
+        duration: 1.5,
+        offset: new Cesium.HeadingPitchRange(
+          Cesium.Math.toRadians(30),
+          Cesium.Math.toRadians(pitch),
+          5000
+        )
+      });
+    }
+
+    document.getElementById("oblique").onclick = () => {
+      showView(-40);
+    };
+
+    document.getElementById("overhead").onclick = () => {
+      showView(-90);
+    };
+
+    // 打开网页时，自动飞到红岩子滑坡附近。
+    showView(-40);
+  </script>
+</body>
+</html>
